@@ -81,7 +81,7 @@ class PagedDbTable(object):
             mappedRow = {}
             for (columnName,columnType,cellVal) in zip( self.columnNames, self.columnTypes, row ):
                 mappedRow[columnName] = viewFormat( columnType, cellVal )
-                viewRows.append( mappedRow )
+            viewRows.append( mappedRow )
 #        namedRows = map( lambda r: dict( zip( self.columnNames, r)), rows )
         return viewRows
 

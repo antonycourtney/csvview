@@ -50,11 +50,11 @@
 <script src="SlickGrid/slick.core.js"></script>
 <script src="SlickGrid/slick.grid.js"></script>
 <script src="csvview.remotemodel.js"></script>
-<script src="bart-columns.js"></script>
+<!-- <script src="bart-columns.js"></script> -->
 
 <script>
   var grid;
-  var loader = new CSVView.Data.RemoteModel();
+  var loader = new CSVView.Data.RemoteModel("${table_name}");
 
   var options = {
     editable: false,
@@ -116,20 +116,16 @@
     grid.onViewportChanged.notify();
   };
 
-  /*
   function onInitialImage( response ) {
-    createGrid( response.columns )
+    createGrid( response.columnInfo );
   };
 
   $(function () {
-      req = $.post( "getInitialImage", 
-                    { tableName: "salaries_w_names" },
-                    onInitialImage );
-  })
-  */
-  $(function() {
-    createGrid( bartColumns );
-  })
+      var url = "tables/${table_name}";
+      req = $.get( url, 
+                  { startRow: 0, rowLimit: 50 },
+                  onInitialImage );
+  });
 </script>
 </body>
 </html>

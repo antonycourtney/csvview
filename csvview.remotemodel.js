@@ -3,7 +3,7 @@
    * A sample AJAX data store implementation.
    * Modified by ANT to load CSV data from a Python script served via cherrypy
    */
-  function RemoteModel() {
+  function RemoteModel( tn ) {
     // private
     var PAGESIZE = 50;
     var data = {length: 0};
@@ -12,6 +12,7 @@
     var sortdir = 1;
     var h_request = null;
     var req = null; // ajax request
+    var table_name = tn;
 
     // events
     var onDataLoading = new Slick.Event();
@@ -75,7 +76,7 @@
       }
 
       //var url = "http://api.thriftdb.com/api.hnsearch.com/items/_search?filter[fields][type][]=submission&q=" + searchstr + "&start=" + (fromPage * PAGESIZE) + "&limit=" + (((toPage - fromPage) * PAGESIZE) + PAGESIZE);
-      var url = "/getCSVData"
+      var url = "tables/" + tn
 
       if (sortcol != null) {
           url += ("&sortby=" + sortcol + ((sortdir > 0) ? "+asc" : "+desc"));
@@ -93,7 +94,7 @@
 
         onDataLoading.notify({from: from, to: to});
 
-        req = $.post( url, 
+        req = $.get( url, 
                       { startRow: fromPage * PAGESIZE, rowLimit: (((toPage - fromPage) * PAGESIZE) + PAGESIZE)},
                       onSuccess );
         /*

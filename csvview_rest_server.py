@@ -13,7 +13,6 @@ import sqlite3
 import threading
 from mako.template import Template
 from mako.lookup import TemplateLookup
-import pdb
 
 lookup = TemplateLookup(directories=['html'])
 
@@ -52,14 +51,9 @@ def getTableInfo( dbConn, tableName ):
 def viewFormat( columnType, cellVal ):
     """ format cellVal suitable for client-side rendering
     """
-    if cellVal==None:
-        return ""
     numFormatStr = "{:,}"
-    if columnType=="integer" or columnType=="float":
-        try:
-            ret = numFormatStr.format( cellVal )
-        except Exception, err:
-            pdb.set_trace()
+    if columnType=="integer" or columnType=="float" and cellVal!=None:
+        ret = numFormatStr.format( cellVal )
     else:
         ret = cellVal
     return ret
@@ -92,10 +86,10 @@ class PagedDbTable(object):
     def getDataPage( self, startRow, rowLimit ):
         dbConn = getDbConn( dbName )
         query = self.baseQuery + " limit " + str( startRow ) + ", " + str( rowLimit )
-        print query
+        # print query
         c = dbConn.execute( query )
         rows = c.fetchall()
-        print " ==> ", len( rows ), " rows"
+        # print " ==> ", len( rows ), " rows"
         
         # now prepare rows for sending to view:
         viewRows = []
@@ -125,7 +119,7 @@ class TableResource(object):
     @cherrypy.expose
     def default( self, tableName, startRow = 0, rowLimit = 10 ):
         dbTable = PagedDbTable( dbName, tableName )     
-        print "startRow = ", startRow, ", rowLimit = ", rowLimit
+        # print "startRow = ", startRow, ", rowLimit = ", rowLimit
         startRow = int( startRow )
         rowLimit = int( rowLimit )
         cherrypy.response.headers['Content-Type'] = 'application/json'

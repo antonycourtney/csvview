@@ -5,7 +5,7 @@
   <title>CSVView</title>
   <link rel="stylesheet" href="SlickGrid/slick.grid.css" type="text/css"/>
   <link rel="stylesheet" href="SlickGrid/css/smoothness/jquery-ui-1.8.16.custom.css" type="text/css"/>
-  <link rel="stylesheet" href="examples.css" type="text/css"/>
+  <link rel="stylesheet" href="SlickGrid/examples/examples.css" type="text/css"/>
   <style>
     .cell-story {
       white-space: normal !important;
@@ -117,7 +117,11 @@
   };
 
   function onInitialImage( response ) {
-    createGrid( response.columnInfo );
+    var ci = response.columnInfo;
+    for (var i = 0; i < ci.length; i++) {
+      ci[i].toolTip = ci[i].name;
+    }
+    createGrid( ci );
   };
 
   $(function () {

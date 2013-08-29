@@ -1,0 +1,274 @@
+#!/usr/bin/python
+"""
+Simple CSV file viewer using slickgrid, sqlite and cherrypy
+"""
+
+import argparse
+import atexit
+import cherrypy
+import csv
+from mako.template import Template
+from mako.lookup import TemplateLookup
+import os
+import os.path
+import re
+import simplejson
+import sqlite3
+import string
+import sys
+import tempfile
+import threading
+import webbrowser
+
+
+lookup = TemplateLookup(directories=['html'])
+threadLocal = threading.local()
+
+def guessColumnType( vs ):
+    # for now: drop all $ and , chars:
+    cs = vs.translate( None, "$," ).strip()
+    # strip out .:
+    nds = cs.translate( None, ".")
+    if nds.isdigit():
+        if len(nds)==len(cs):
+            return "integer"
+        else:
+            return "real"
+    return "text"
+
+
+def genColumnIds( colHeaders ):
+    """Use descriptive strings from first (header) row of CSV to generate column identifiers for database.
+    Tries to use the first word of each description to generate a human-friendly column name, but falls back 
+    to simpler 'col'N if that fails.
+    Will fail in an unlikely edge case.
+"""
+ # try to generate a reasonable field name from the given columnName:
+    colNames = []
+    colNameMap = {}
+    for i, cdesc in enumerate(colHeaders):
+        words =  re.findall( '\w+', cdesc )
+        if len(words)==0 or words[0] in colNameMap:
+            cid = "col" + str(i)
+        else:
+            cid = words[0]
+        colNames.append( ( cid, cdesc ) )
+        colNameMap[ cid ] = True
+    return colNames
+
+def parseType( ct, vs): 
+    """parse string vs to a Python value based on SQL type named ct
+"""
+    if len(vs)==0 and ct!="text":
+        return None
+    if ct=="integer":
+        # for now: drop all $ and , chars:
+        cs = vs.strip().translate( None, "$," )
+        ret = int( cs )
+    elif ct=="real":
+        # for now: drop all $ and , chars:
+        cs = vs.strip().translate( None, "$," )
+        ret = float( cs )
+    else:
+        ret = vs
+    return ret
+
+def createColumnTable( dbConn, tableName, colIdInfo ):
+    """Create a metadata table to retain descriptive column names
+"""
+    schemaStr = "('id' integer, 'colName' text, 'description' text)"
+    colTableName = tableName + "_columnInfo"
+    dropStr = "DROP TABLE IF EXISTS " + colTableName
+    dbConn.execute( dropStr )
+    createStr = "CREATE TABLE " + colTableName + " " + schemaStr
+    print createStr
+    dbConn.execute( createStr )
+    insertStmt = "INSERT INTO " + colTableName + " VALUES ( ?, ?, ? )"
+    for id,(colName,colDesc) in enumerate( colIdInfo ):
+        rowVals = [ id, colName, colDesc ]
+        dbConn.execute( insertStmt, rowVals )
+
+
+def loadCSVFile( dbName, csvFilePath ):
+	"""Attempt to open and parse the specified CSV file and load it in to an in-memory sqlite table.
+	Returns:  name of sqllite table
+"""
+	bnm = os.path.basename( csvFilePath )
+	(tableName,_)= os.path.splitext( bnm )
+	dbConn = sqlite3.connect(dbName)
+	with open(csvFilePath) as csvfile:
+	    rd = csv.reader( csvfile )
+	    headerRow = rd.next()
+	    colIdInfo = genColumnIds( headerRow )
+	    createColumnTable( dbConn, tableName, colIdInfo )
+	    dataRow0 = rd.next()
+	    colNames = map( lambda (cn, _) : cn, colIdInfo )
+	    colTypes = map( guessColumnType, dataRow0 )
+
+	    # build up Schema string:
+	    typedCols = map( lambda cn, ct: "'" + cn + "' " + ct, colNames, colTypes )
+	    schemaStr = string.join( typedCols, ", " )
+	    dropStr = "DROP TABLE IF EXISTS " + tableName
+	    dbConn.execute( dropStr )    
+	    createStr = "CREATE TABLE " + tableName + " ( " + schemaStr + " )"
+	    dbConn.execute( createStr )
+	    qs = ['?'] * len(colNames)
+	    insertStmt = "INSERT INTO " + tableName + " VALUES ( " + string.join( qs, ", " ) + " ) "
+	    valsRow0 = map(parseType, colTypes, dataRow0 )
+	    dbConn.execute( insertStmt, valsRow0 )
+
+	    for row in rd:
+	        rowVals = map( parseType, colTypes, row )
+	        dbConn.execute( insertStmt, rowVals )
+	    dbConn.commit()
+	return tableName
+
+def getDbConn( dbName ):
+    """Get a thread-local database connection.
+    """
+    varName = "sqlite3-dbConn-" + dbName
+    v = getattr( threadLocal, varName, None )
+    if v is None:
+        v = sqlite3.connect( dbName )
+        setattr( threadLocal, varName, v )
+    return v
+
+def getTableInfo( dbConn, tableName ):
+    """Use sqlite tableinfo pragma to retrieve metadata on the given table
+    """
+    query = "pragma table_info(%s)" % tableName
+    c = dbConn.execute( query )
+    r = c.fetchall()
+    return r
+
+def viewFormat( columnType, cellVal ):
+    """ format cellVal suitable for client-side rendering
+    """
+    numFormatStr = "{:,}"
+    if columnType=="integer" or columnType=="float" and cellVal!=None:
+        ret = numFormatStr.format( cellVal )
+    else:
+        ret = cellVal
+    return ret
+
+class PagedDbTable(object):
+    def __init__( self, dbName, dbTableName):
+        self.dbName = dbName
+        self.dbTableName = dbTableName
+        query = "select count(*) from " + dbTableName
+        dbConn = getDbConn( dbName )
+        c = dbConn.execute( query );
+        self.totalRowCount = c.fetchone()[0]
+        self.baseQuery = "select * from " + dbTableName
+        self.tableInfo = getTableInfo( dbConn, dbTableName )
+        self.columnNames = map( lambda ti: ti[1], self.tableInfo )
+        self.columnTypes = map( lambda ti: ti[2], self.tableInfo )
+        # extract human-friendly descriptions from columnInfo companion table
+        cinfoTable = dbTableName + "_columnInfo"
+        c = dbConn.execute( "select description from " + cinfoTable)
+        rows = c.fetchall()
+        self.columnDescs = map( lambda r:r[0], rows )
+        self.columnInfo = []
+        for (cn,cd) in zip(self.columnNames,self.columnDescs):
+            cmap = { 'id': cn, 'field': cn, 'name': cd }
+            self.columnInfo.append( cmap )
+
+    def getColumnInfo( self ):
+        return self.columnInfo
+
+    def getDataPage( self, startRow, rowLimit ):
+        dbConn = getDbConn( dbName )
+        query = self.baseQuery + " limit " + str( startRow ) + ", " + str( rowLimit )
+        # print query
+        c = dbConn.execute( query )
+        rows = c.fetchall()
+        # print " ==> ", len( rows ), " rows"
+        
+        # now prepare rows for sending to view:
+        viewRows = []
+        for row in rows:
+            mappedRow = {}
+            for (columnName,columnType,cellVal) in zip( self.columnNames, self.columnTypes, row ):
+                mappedRow[columnName] = viewFormat( columnType, cellVal )
+            viewRows.append( mappedRow )
+#        namedRows = map( lambda r: dict( zip( self.columnNames, r)), rows )
+        return viewRows
+
+#
+# N.B.:  We're still using a REST-ful (stateless) approach here, but doing so via the default() method.
+# We do this because it appears that CherryPy's MethodDispatcher() doesn't allow default() or index()
+# methods, which in turn would force us to reify the table hierarchy from the sqllite database as a
+# tree of Python objects, which we don't want to do.
+# So we just stick with the standard Dispatcher() but this means using default() to provide RESTful
+# URIs. 
+
+# Provide RESTful paged access to named table
+class TableResource(object):
+    def __init__(self):
+        pass
+
+    @cherrypy.expose
+    def default( self, tableName, startRow = 0, rowLimit = 10 ):
+        dbTable = PagedDbTable( dbName, tableName )     
+        # print "startRow = ", startRow, ", rowLimit = ", rowLimit
+        startRow = int( startRow )
+        rowLimit = int( rowLimit )
+        cherrypy.response.headers['Content-Type'] = 'application/json'
+        # rowData = self.dataFile['data'][ startRow : startRow + rowLimit ]
+        columnInfo = dbTable.getColumnInfo()
+        rowData = dbTable.getDataPage( startRow, rowLimit )
+        request = { 'startRow': startRow, 'rowLimit': rowLimit }
+        response = { 'request': request, 'columnInfo': columnInfo, 
+                     'totalRowCount': dbTable.totalRowCount, 'results': rowData }                                                          
+        return simplejson.dumps( response )
+
+# Use simple templating to inject table name extracted from request params back in to HTML on client side: 
+class TableViewerResource(object):
+    def __init__(self):
+        pass
+
+    @cherrypy.expose
+    def default(self, table_name=''):
+        return self.to_html( table_name )
+
+    def to_html(self, table_name):
+        tmpl = lookup.get_template("table_viewer.html")
+        return tmpl.render(table_name=table_name)
+
+
+APP_DIR = os.path.abspath(".")
+config = {'/':
+                {'tools.staticdir.on': True,
+                 'tools.staticdir.dir': APP_DIR,
+                },
+        }
+
+def open_page(tableName):
+    webbrowser.open("http://127.0.0.1:8080/table_viewer?table_name=" + tableName )
+
+
+class Root(object):
+    pass
+
+def startWebServer( dbName, tableName ):
+	root = Root()
+	root.tables = TableResource()
+	root.table_viewer = TableViewerResource()
+
+	dbTable = PagedDbTable( dbName, tableName )
+	cherrypy.engine.subscribe('start', lambda : open_page( tableName ) )
+	# cherrypy.tree.mount( AjaxApp( dbTable ), '/', config=config)
+	# cherrypy.engine.start()
+	cherrypy.quickstart( root, '/', config)
+
+argParser = argparse.ArgumentParser(description='display a csv file using slickgrid in a local web browser')
+argParser.add_argument('csvfile',metavar='FILE',type=str, nargs=1, help='path to CSV file')
+
+args = argParser.parse_args()
+csvFilePath = args.csvfile[0]
+# (_,dbName) = tempfile.mkstemp('.db','csvview', '/tmp')
+tf = tempfile.NamedTemporaryFile(prefix='csvview',suffix='.db',dir='/tmp')
+dbName = tf.name
+atexit.register( lambda f: f.close(), tf )
+tableName = loadCSVFile( dbName, csvFilePath )
+startWebServer( dbName, tableName )

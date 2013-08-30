@@ -78,10 +78,6 @@
       //var url = "http://api.thriftdb.com/api.hnsearch.com/items/_search?filter[fields][type][]=submission&q=" + searchstr + "&start=" + (fromPage * PAGESIZE) + "&limit=" + (((toPage - fromPage) * PAGESIZE) + PAGESIZE);
       var url = "tables/" + tn
 
-      if (sortcol != null) {
-          url += ("&sortby=" + sortcol + ((sortdir > 0) ? "+asc" : "+desc"));
-      }
-
       if (h_request != null) {
         clearTimeout(h_request);
       }
@@ -94,20 +90,13 @@
 
         onDataLoading.notify({from: from, to: to});
 
-        req = $.get( url, 
-                      { startRow: fromPage * PAGESIZE, rowLimit: (((toPage - fromPage) * PAGESIZE) + PAGESIZE)},
-                      onSuccess );
-        /*
-        req = $.jsonp({
-          url: url,
-          callbackParameter: "callback",
-          cache: true,
-          success: onSuccess,
-          error: function () {
-            onError(fromPage, toPage)
-          }
-        });
-        */
+        reqParams = { startRow: fromPage * PAGESIZE, rowLimit: (((toPage - fromPage) * PAGESIZE) + PAGESIZE)};
+
+        if (sortcol != null )
+          reqParams.sortby = sortcol + ((sortdir > 0) ? "+asc" : "+desc");
+
+        req = $.get( url, reqParams, onSuccess ); 
+
         req.fromPage = fromPage;
         req.toPage = toPage;
       }, 50);

@@ -4,12 +4,10 @@ Simple CSV file viewer using slickgrid, sqlite and cherrypy
 """
 
 import argparse
-import atexit
-import tempfile
+
 
 import tableserver
 import csv2sqlite
-
 
 argParser = argparse.ArgumentParser(description='interactively view a CSV file in a local web browser')
 argParser.add_argument('csvfile',metavar='FILE',type=str, nargs=1, help='path to CSV file')

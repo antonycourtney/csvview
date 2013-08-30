@@ -74,13 +74,11 @@
       loader.ensureData(vp.top, vp.bottom);
     });
 
-    /*
     grid.onSort.subscribe(function (e, args) {
       loader.setSort(args.sortCol.field, args.sortAsc ? 1 : -1);
       var vp = grid.getViewport();
       loader.ensureData(vp.top, vp.bottom);
     });
-    */
 
     loader.onDataLoading.subscribe(function () {
       if (!loadingIndicator) {
@@ -107,11 +105,6 @@
       loadingIndicator.fadeOut();
     });
 
-    /*
-    loader.setSort("create_ts", -1);
-    grid.setSortColumn("date", false);
-    */
-
     // load the first page
     grid.onViewportChanged.notify();
   };
@@ -120,6 +113,7 @@
     var ci = response.columnInfo;
     for (var i = 0; i < ci.length; i++) {
       ci[i].toolTip = ci[i].name;
+      ci[i].sortable = true;
     }
     createGrid( ci );
   };

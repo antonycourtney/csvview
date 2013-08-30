@@ -24,18 +24,20 @@ import webbrowser
 lookup = TemplateLookup(directories=['html'])
 threadLocal = threading.local()
 
+# compiled regex to match a float or int:
+intRE = re.compile('[-+]?[0-9]+')
+numRE = re.compile('[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?')
+
 def guessColumnType( vs ):
     # for now: drop all $ and , chars:
     cs = vs.translate( None, "$," ).strip()
-    # strip out .:
-    nds = cs.translate( None, ".")
-    if nds.isdigit():
-        if len(nds)==len(cs):
-            return "integer"
-        else:
-            return "real"
+    match = intRE.match( cs )
+    if match and match.start()==0 and match.end()==len( cs ):
+        return "integer"
+    match = numRE.match( cs )
+    if match and match.start()==0 and match.end()==len( cs ):
+        return "real"
     return "text"
-
 
 def genColumnIds( colHeaders ):
     """Use descriptive strings from first (header) row of CSV to generate column identifiers for database.
@@ -81,7 +83,6 @@ def createColumnTable( dbConn, tableName, colIdInfo ):
     dropStr = "DROP TABLE IF EXISTS " + colTableName
     dbConn.execute( dropStr )
     createStr = "CREATE TABLE " + colTableName + " " + schemaStr
-    print createStr
     dbConn.execute( createStr )
     insertStmt = "INSERT INTO " + colTableName + " VALUES ( ?, ?, ? )"
     for id,(colName,colDesc) in enumerate( colIdInfo ):
@@ -90,38 +91,39 @@ def createColumnTable( dbConn, tableName, colIdInfo ):
 
 
 def loadCSVFile( dbName, csvFilePath ):
-	"""Attempt to open and parse the specified CSV file and load it in to an in-memory sqlite table.
-	Returns:  name of sqllite table
+    """Attempt to open and parse the specified CSV file and load it in to an in-memory sqlite table.
+    Returns:  name of sqllite table
 """
-	bnm = os.path.basename( csvFilePath )
-	(tableName,_)= os.path.splitext( bnm )
-	dbConn = sqlite3.connect(dbName)
-	with open(csvFilePath) as csvfile:
-	    rd = csv.reader( csvfile )
-	    headerRow = rd.next()
-	    colIdInfo = genColumnIds( headerRow )
-	    createColumnTable( dbConn, tableName, colIdInfo )
-	    dataRow0 = rd.next()
-	    colNames = map( lambda (cn, _) : cn, colIdInfo )
-	    colTypes = map( guessColumnType, dataRow0 )
+    bnm = os.path.basename( csvFilePath )
+    (tableName,_)= os.path.splitext( bnm )
+    dbConn = sqlite3.connect(dbName)
+    with open(csvFilePath) as csvfile:
+        rd = csv.reader( csvfile )
+        headerRow = rd.next()
+        colIdInfo = genColumnIds( headerRow )
+        createColumnTable( dbConn, tableName, colIdInfo )
+        dataRow0 = rd.next()
+        colNames = map( lambda (cn, _) : cn, colIdInfo )
+        colTypes = map( guessColumnType, dataRow0 )
 
-	    # build up Schema string:
-	    typedCols = map( lambda cn, ct: "'" + cn + "' " + ct, colNames, colTypes )
-	    schemaStr = string.join( typedCols, ", " )
-	    dropStr = "DROP TABLE IF EXISTS " + tableName
-	    dbConn.execute( dropStr )    
-	    createStr = "CREATE TABLE " + tableName + " ( " + schemaStr + " )"
-	    dbConn.execute( createStr )
-	    qs = ['?'] * len(colNames)
-	    insertStmt = "INSERT INTO " + tableName + " VALUES ( " + string.join( qs, ", " ) + " ) "
-	    valsRow0 = map(parseType, colTypes, dataRow0 )
-	    dbConn.execute( insertStmt, valsRow0 )
+        # build up Schema string:
+        typedCols = map( lambda cn, ct: "'" + cn + "' " + ct, colNames, colTypes )
+        schemaStr = string.join( typedCols, ", " )
+        dropStr = "DROP TABLE IF EXISTS " + tableName
+        dbConn.execute( dropStr )    
+        createStr = "CREATE TABLE " + tableName + " ( " + schemaStr + " )"
+        print createStr
+        dbConn.execute( createStr )
+        qs = ['?'] * len(colNames)
+        insertStmt = "INSERT INTO " + tableName + " VALUES ( " + string.join( qs, ", " ) + " ) "
+        valsRow0 = map(parseType, colTypes, dataRow0 )
+        dbConn.execute( insertStmt, valsRow0 )
 
-	    for row in rd:
-	        rowVals = map( parseType, colTypes, row )
-	        dbConn.execute( insertStmt, rowVals )
-	    dbConn.commit()
-	return tableName
+        for row in rd:
+            rowVals = map( parseType, colTypes, row )
+            dbConn.execute( insertStmt, rowVals )
+        dbConn.commit()
+    return tableName
 
 def getDbConn( dbName ):
     """Get a thread-local database connection.
@@ -251,15 +253,15 @@ class Root(object):
     pass
 
 def startWebServer( dbName, tableName ):
-	root = Root()
-	root.tables = TableResource()
-	root.table_viewer = TableViewerResource()
+    root = Root()
+    root.tables = TableResource()
+    root.table_viewer = TableViewerResource()
 
-	dbTable = PagedDbTable( dbName, tableName )
-	cherrypy.engine.subscribe('start', lambda : open_page( tableName ) )
-	# cherrypy.tree.mount( AjaxApp( dbTable ), '/', config=config)
-	# cherrypy.engine.start()
-	cherrypy.quickstart( root, '/', config)
+    dbTable = PagedDbTable( dbName, tableName )
+    cherrypy.engine.subscribe('start', lambda : open_page( tableName ) )
+    # cherrypy.tree.mount( AjaxApp( dbTable ), '/', config=config)
+    # cherrypy.engine.start()
+    cherrypy.quickstart( root, '/', config)
 
 argParser = argparse.ArgumentParser(description='display a csv file using slickgrid in a local web browser')
 argParser.add_argument('csvfile',metavar='FILE',type=str, nargs=1, help='path to CSV file')

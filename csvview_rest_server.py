@@ -15,9 +15,7 @@ from mako.template import Template
 from mako.lookup import TemplateLookup
 
 lookup = TemplateLookup(directories=['html'])
-
 threadLocal = threading.local()
-
 
 def readCSVFile(filename):
     with open(filename) as csvfile:

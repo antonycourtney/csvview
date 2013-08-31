@@ -136,8 +136,10 @@ def loadCSVFile( dbName, csvFilePath ):
         dbConn.execute( createStr )
         qs = ['?'] * len(colNames)
         insertStmt = "INSERT INTO " + tableName + " VALUES ( " + string.join( qs, ", " ) + " ) "
-        for row in rd:
+        for (i,row) in enumerate( rd ):
             rowVals = map( parseType, colTypes, row )
+            # if i < 10:
+            #    print rowVals
             dbConn.execute( insertStmt, rowVals )
         dbConn.commit()
     return tableName

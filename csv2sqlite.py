@@ -14,7 +14,7 @@ class ColType:
     INT = 0
     REAL = 1
     TEXT = 2
-    strMap = { INT: 'int', REAL: 'real', TEXT: 'text' }
+    strMap = { INT: 'integer', REAL: 'real', TEXT: 'text' }
 
 # compiled regex to match a float or int:
 # Also allows commas and leading $

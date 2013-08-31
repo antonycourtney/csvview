@@ -35,9 +35,8 @@
   </style>
 </head>
 <body>
-<div style="width:1050px;float:left;">
-  <div id="myGrid" style="width:100%;height:600px;"></div>
-  <div id="pager" style="width:100%;height:20px;"></div>
+<div style="width:100%;float:left;">
+  <div id="myGrid" style="width:100%;height:800px;"></div>
 </div>
 
 <script src="SlickGrid/lib/firebugx.js"></script>
@@ -110,10 +109,23 @@
   };
 
   function onInitialImage( response ) {
+    // let's approximate the column width:
+    var colWidths = {};
+    var rowData = response.results;
+    for ( var i = 0; i < rowData.length; i++ ) {
+      var row = rowData[ i ];
+      var cnm;
+      for ( cnm in row ) {
+        var cellVal = row[ cnm ];
+        if( cellVal )
+          colWidths[ cnm ] = Math.max( colWidths[ cnm ] || 0, 16 + ( 6 * cellVal.toString().length ) );
+      }
+    }
     var ci = response.columnInfo;
     for (var i = 0; i < ci.length; i++) {
       ci[i].toolTip = ci[i].name;
       ci[i].sortable = true;
+      ci[i].width = colWidths[ ci[i].field ];
     }
     createGrid( ci );
   };

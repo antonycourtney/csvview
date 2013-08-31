@@ -132,7 +132,7 @@ def loadCSVFile( dbName, csvFilePath ):
         dropStr = "DROP TABLE IF EXISTS " + tableName
         dbConn.execute( dropStr )    
         createStr = "CREATE TABLE " + tableName + " ( " + schemaStr + " )"
-        print createStr
+        # print createStr
         dbConn.execute( createStr )
         qs = ['?'] * len(colNames)
         insertStmt = "INSERT INTO " + tableName + " VALUES ( " + string.join( qs, ", " ) + " ) "

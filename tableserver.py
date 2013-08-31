@@ -83,7 +83,7 @@ class PagedDbTable(object):
         else:
             orderStr = ""
         query = self.baseQuery + orderStr + " limit " + str( startRow ) + ", " + str( rowLimit )
-        print query
+        # print query
         c = dbConn.execute( query )
         rows = c.fetchall()
         # print " ==> ", len( rows ), " rows"
@@ -114,7 +114,7 @@ class TableResource(object):
     @cherrypy.expose
     def default( self, tableName, startRow = 0, rowLimit = 10, sortby = '' ):
         dbTable = PagedDbTable( self.dbName, tableName )     
-        print "startRow = ", startRow, ", rowLimit = ", rowLimit, ", sortby = '", sortby, "'"
+        # print "startRow = ", startRow, ", rowLimit = ", rowLimit, ", sortby = '", sortby, "'"
         startRow = int( startRow )
         rowLimit = int( rowLimit )
         sortstr = sortby.strip();
@@ -148,7 +148,7 @@ class TableViewerResource(object):
 APP_DIR = os.path.abspath(".")
 config = {'/':
                 {'tools.staticdir.on': True,
-                 'tools.staticdir.dir': APP_DIR,
+                 'tools.staticdir.dir': APP_DIR
                 },
         }
 
@@ -164,5 +164,6 @@ def startWebServer( dbName, tableName ):
     root.table_viewer = TableViewerResource()
 
     dbTable = PagedDbTable( dbName, tableName )
+    cherrypy.config.update( {'log.screen': False })
     cherrypy.engine.subscribe('start', lambda : open_page( tableName ) )
     cherrypy.quickstart( root, '/', config)

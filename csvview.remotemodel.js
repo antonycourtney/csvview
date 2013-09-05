@@ -75,9 +75,7 @@
         return;
       }
 
-      //var url = "http://api.thriftdb.com/api.hnsearch.com/items/_search?filter[fields][type][]=submission&q=" + searchstr + "&start=" + (fromPage * PAGESIZE) + "&limit=" + (((toPage - fromPage) * PAGESIZE) + PAGESIZE);
       var url = "tables/" + tn
-
       if (h_request != null) {
         clearTimeout(h_request);
       }
@@ -113,7 +111,6 @@
       // console.log( resp );
       
       var from = resp.request.startRow, to = from + resp.results.length;
-      // data.length = Math.min(parseInt(resp.totalRowCount),1000); // limitation of the API
       data.length = parseInt( resp.totalRowCount );  
 
       for (var i = 0; i < resp.results.length; i++) {
@@ -143,12 +140,6 @@
       clear();
     }
 
-    function setSearch(str) {
-      searchstr = str;
-      clear();
-    }
-
-
     init();
 
     return {
@@ -161,7 +152,6 @@
       "ensureData": ensureData,
       "reloadData": reloadData,
       "setSort": setSort,
-      "setSearch": setSearch,
 
       // events
       "onDataLoading": onDataLoading,

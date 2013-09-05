@@ -107,7 +107,7 @@ conservative guess at column types."""
     return colTypes
 
 
-def loadCSVFile( dbName, csvFilePath ):
+def loadCSVFile( dbName, csvFilePath, **fmtparams ):
     """Attempt to open and parse the specified CSV file and load it in to an in-memory sqlite table.
     Returns:  name of sqllite table
 """
@@ -115,7 +115,7 @@ def loadCSVFile( dbName, csvFilePath ):
     (tableName,_)= os.path.splitext( bnm )
     dbConn = sqlite3.connect(dbName)
     with open(csvFilePath) as csvfile:
-        rd = csv.reader( csvfile )
+        rd = csv.reader( csvfile, **fmtparams )
         headerRow = rd.next()
         colIdInfo = genColumnIds( headerRow )
         createColumnTable( dbConn, tableName, colIdInfo )
@@ -123,7 +123,7 @@ def loadCSVFile( dbName, csvFilePath ):
         colTypes = guessColumnTypes( csvfile, rd, len( colIdInfo ) )
         # now rewind to beginning of file:
         csvfile.seek( 0 )
-        rd = csv.reader( csvfile )
+        rd = csv.reader( csvfile, **fmtparams )
         rd.next()   # skip header
 
         # build up Schema string:

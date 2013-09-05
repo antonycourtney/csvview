@@ -7,6 +7,10 @@
   <link rel="stylesheet" href="SlickGrid/css/smoothness/jquery-ui-1.8.16.custom.css" type="text/css"/>
   <link rel="stylesheet" href="SlickGrid/examples/examples.css" type="text/css"/>
   <style>
+    body {
+      margin: 16px;
+      margin-top: 8px;
+    }
     .cell-story {
       white-space: normal !important;
       line-height: 19px !important;
@@ -104,12 +108,20 @@
       loadingIndicator.fadeOut();
     });
 
+    /*$(window).resize(function () {
+        grid.resizeCanvas();
+    });
+    */
+
     // load the first page
     grid.onViewportChanged.notify();
   };
 
   function onInitialImage( response ) {
     // let's approximate the column width:
+    var MINCOLWIDTH = 44;
+    var GRIDWIDTHPAD = 16;
+    var gridWidth = 0;  // initial padding amount
     var colWidths = {};
     var rowData = response.results;
     for ( var i = 0; i < rowData.length; i++ ) {
@@ -118,7 +130,7 @@
       for ( cnm in row ) {
         var cellVal = row[ cnm ];
         if( cellVal )
-          colWidths[ cnm ] = Math.max( colWidths[ cnm ] || 0, 16 + ( 6 * cellVal.toString().length ) );
+          colWidths[ cnm ] = Math.max( colWidths[ cnm ] || MINCOLWIDTH, 8 + ( 6 * cellVal.toString().length ) );
       }
     }
     var ci = response.columnInfo;
@@ -126,9 +138,18 @@
       ci[i].toolTip = ci[i].name;
       ci[i].sortable = true;
       ci[i].width = colWidths[ ci[i].field ];
+      if( i==ci.length - 1 ) {
+        // pad out last column to allow for dynamic scrollbar
+        ci[i].width += GRIDWIDTHPAD;
+      }
+      gridWidth += ci[i].width;
     }
     createGrid( ci );
+
+    $("#myGrid").css( 'width', gridWidth+'px' );
   };
+
+
 
   $(function () {
       var url = "tables/${table_name}";

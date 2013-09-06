@@ -72,6 +72,7 @@ class PagedDbTable(object):
         for (cn,cd) in zip(self.columnNames,self.columnDescs):
             cmap = { 'id': cn, 'field': cn, 'name': cd }
             self.columnInfo.append( cmap )
+        # print self.columnInfo
 
     def getColumnInfo( self ):
         return self.columnInfo

@@ -11,10 +11,12 @@ import csv2sqlite
 
 argParser = argparse.ArgumentParser(description='interactively view a CSV file in a local web browser')
 argParser.add_argument('csvfile',metavar='FILE',type=str, nargs=1, help='path to CSV file')
-
+argParser.add_argument('--csvdelim', metavar='<delimiter>',type=str,nargs=1, help='delimiter character used in CSV file',
+    default=',')
 args = argParser.parse_args()
 csvFilePath = args.csvfile[0]
+csvDelim = args.csvdelim[0]
 
 dbName = csv2sqlite.createTempDb()
-tableName = csv2sqlite.loadCSVFile( dbName, csvFilePath )
+tableName = csv2sqlite.loadCSVFile( dbName, csvFilePath, delimiter=csvDelim )
 tableserver.startWebServer( dbName, tableName )

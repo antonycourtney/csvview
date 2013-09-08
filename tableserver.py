@@ -156,13 +156,12 @@ def open_page(tableName):
     webbrowser.open("http://127.0.0.1:8080/table_viewer?table_name=" + tableName )
 
 class Root(object):
-    pass
+    def __init__( self, tables, table_viewer ):
+        self.tables = tables
+        self.table_viewer = table_viewer
 
 def startWebServer( dbName, tableName ):
-    root = Root()
-    root.tables = TableResource( dbName )
-    root.table_viewer = TableViewerResource()
-
+    root = Root( TableResource( dbName ), TableViewerResource() )
     dbTable = PagedDbTable( dbName, tableName )
     cherrypy.config.update( {'log.screen': False })
     cherrypy.engine.subscribe('start', lambda : open_page( tableName ) )

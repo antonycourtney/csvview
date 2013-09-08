@@ -53,6 +53,7 @@ def viewFormat( columnType, cellVal ):
 
 class PagedDbTable(object):
     def __init__( self, dbName, dbTableName):
+        super( PagedDbTable, self ).__init__()
         self.dbName = dbName
         self.dbTableName = dbTableName
         query = "select count(*) from " + dbTableName
@@ -109,6 +110,7 @@ class PagedDbTable(object):
 # Provide RESTful paged access to named table
 class TableResource(object):
     def __init__(self, dbName):
+        super( TableResource, self ).__init__()
         self.dbName = dbName
 
     @cherrypy.expose
@@ -133,8 +135,6 @@ class TableResource(object):
 
 # Use simple templating to inject table name extracted from request params back in to HTML on client side: 
 class TableViewerResource(object):
-    def __init__(self):
-        pass
 
     @cherrypy.expose
     def default(self, table_name=''):

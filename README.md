@@ -51,4 +51,4 @@ Please let me know if you have any issues running csvview.  I also welcome Sugge
 
 I wrote csvview as an experiment to learn more about SlickGrid, particularly its support for adaptive scrolling, and as my first foray in to Ajax programming.  If you happen to find csvview useful, either as a practical tool or as an example of how to use SlickGrid, please drop me a line to let me know.
 
-Email me at *firstname*.*lastname*@gmail.com.
+Email me at *firstname*.*lastname* @gmail.com.

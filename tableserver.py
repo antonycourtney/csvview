@@ -7,7 +7,7 @@ from mako.template import Template
 from mako.lookup import TemplateLookup
 import os
 import os.path
-import simplejson
+import json
 import sqlite3
 import string
 import sys
@@ -130,7 +130,7 @@ class TableResource(object):
         request = { 'startRow': startRow, 'rowLimit': rowLimit }
         response = { 'request': request, 'columnInfo': columnInfo, 
                      'totalRowCount': dbTable.totalRowCount, 'results': rowData }                                                          
-        return simplejson.dumps( response )
+        return json.dumps( response )
 
 # Use simple templating to inject table name extracted from request params back in to HTML on client side: 
 class TableViewerResource(object):
